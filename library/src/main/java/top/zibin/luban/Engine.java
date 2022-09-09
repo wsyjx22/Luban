@@ -18,11 +18,13 @@ class Engine {
   private int srcWidth;
   private int srcHeight;
   private boolean focusAlpha;
+  private int quality; // 图片压缩质量
 
-  Engine(InputStreamProvider srcImg, File tagImg, boolean focusAlpha) throws IOException {
+  Engine(InputStreamProvider srcImg, File tagImg, boolean focusAlpha, int quality) throws IOException {
     this.tagImg = tagImg;
     this.srcImg = srcImg;
     this.focusAlpha = focusAlpha;
+    this.quality = quality;
 
     BitmapFactory.Options options = new BitmapFactory.Options();
     options.inJustDecodeBounds = true;
@@ -33,6 +35,10 @@ class Engine {
     this.srcHeight = options.outHeight;
   }
 
+  /**
+   * 计算邻近采样率
+   * @return
+   */
   private int computeSize() {
     srcWidth = srcWidth % 2 == 1 ? srcWidth + 1 : srcWidth;
     srcHeight = srcHeight % 2 == 1 ? srcHeight + 1 : srcHeight;
@@ -58,14 +64,23 @@ class Engine {
     }
   }
 
+  /**
+   * 图片旋转
+   * @param bitmap
+   * @param angle
+   * @return
+   */
   private Bitmap rotatingImage(Bitmap bitmap, int angle) {
     Matrix matrix = new Matrix();
-
     matrix.postRotate(angle);
-
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
   }
 
+  /**
+   * 压缩
+   * @return
+   * @throws IOException
+   */
   File compress() throws IOException {
     BitmapFactory.Options options = new BitmapFactory.Options();
     options.inSampleSize = computeSize();
@@ -76,7 +91,7 @@ class Engine {
     if (Checker.SINGLE.isJPG(srcImg.open())) {
       tagBitmap = rotatingImage(tagBitmap, Checker.SINGLE.getOrientation(srcImg.open()));
     }
-    tagBitmap.compress(focusAlpha ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG, 60, stream);
+    tagBitmap.compress(focusAlpha ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG, this.quality, stream);
     tagBitmap.recycle();
 
     FileOutputStream fos = new FileOutputStream(tagImg);

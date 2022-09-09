@@ -29,6 +29,7 @@ public class Luban implements Handler.Callback {
   private String mTargetDir;
   private boolean focusAlpha;
   private int mLeastCompressSize;
+  private int mLastQuality;
   private OnRenameListener mRenameListener;
   private OnCompressListener mCompressListener;
   private CompressionPredicate mCompressionPredicate;
@@ -43,6 +44,7 @@ public class Luban implements Handler.Callback {
     this.mCompressListener = builder.mCompressListener;
     this.mLeastCompressSize = builder.mLeastCompressSize;
     this.mCompressionPredicate = builder.mCompressionPredicate;
+    this.mLastQuality = builder.mLastQuality;
     mHandler = new Handler(Looper.getMainLooper(), this);
   }
 
@@ -150,7 +152,7 @@ public class Luban implements Handler.Callback {
    */
   private File get(InputStreamProvider input, Context context) throws IOException {
     try {
-      return new Engine(input, getImageCacheFile(context, Checker.SINGLE.extSuffix(input)), focusAlpha).compress();
+      return new Engine(input, getImageCacheFile(context, Checker.SINGLE.extSuffix(input)), focusAlpha, this.mLastQuality).compress();
     } finally {
       input.close();
     }
@@ -189,13 +191,13 @@ public class Luban implements Handler.Callback {
     if (mCompressionPredicate != null) {
       if (mCompressionPredicate.apply(path.getPath())
           && Checker.SINGLE.needCompress(mLeastCompressSize, path.getPath())) {
-        result = new Engine(path, outFile, focusAlpha).compress();
+        result = new Engine(path, outFile, focusAlpha, mLastQuality).compress();
       } else {
         result = new File(path.getPath());
       }
     } else {
       result = Checker.SINGLE.needCompress(mLeastCompressSize, path.getPath()) ?
-          new Engine(path, outFile, focusAlpha).compress() :
+          new Engine(path, outFile, focusAlpha, mLastQuality).compress() :
           new File(path.getPath());
     }
 
@@ -225,6 +227,7 @@ public class Luban implements Handler.Callback {
     private String mTargetDir;
     private boolean focusAlpha;
     private int mLeastCompressSize = 100;
+    private int mLastQuality = 60;
     private OnRenameListener mRenameListener;
     private OnCompressListener mCompressListener;
     private CompressionPredicate mCompressionPredicate;
@@ -298,7 +301,12 @@ public class Luban implements Handler.Callback {
 
         @Override
         public String getPath() {
-          return uri.getPath();
+          // android 7.0后拍照或者相册选择Uri路径都是content:// 格式
+          if ("content".equalsIgnoreCase(uri.getScheme())) {
+            return uri.toString();
+          } else {
+            return uri.getPath();
+          }
         }
       });
       return this;
@@ -331,6 +339,11 @@ public class Luban implements Handler.Callback {
      */
     public Builder setFocusAlpha(boolean focusAlpha) {
       this.focusAlpha = focusAlpha;
+      return this;
+    }
+
+    public Builder setQuality(int quality) {
+      this.mLastQuality = quality;
       return this;
     }
 
